@@ -1,0 +1,10 @@
+mutation MyMutation($objects: [lht_ceiling_panels_insert_input!] = {}) {
+  insert_lht_ceiling_panels(on_conflict: {constraint: panels_pkey}, objects: $objects) {
+    returning {
+      mark
+      tag
+      x
+      y
+    }
+  }
+}

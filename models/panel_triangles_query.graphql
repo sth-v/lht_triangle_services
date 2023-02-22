@@ -1,0 +1,13 @@
+query {
+  lht_ceiling_panels{
+    x
+    y
+    centroid
+    subtype
+    tag
+    cutted
+    extra
+    outside
+
+  }
+}
