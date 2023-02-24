@@ -9,6 +9,7 @@ service:
   configs:
     hosts:
       - localhost
+      - 79.143.24.243
       - 92.53.64.197
 
 

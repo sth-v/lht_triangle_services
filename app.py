@@ -30,8 +30,8 @@ from functools import lru_cache, cached_property
 
 from models.geom import PointRhp, CutPanels
 
-PRIMARY = "runitime:lht:ceiling:L2W:"
-TOLERANCE = 20
+PRIMARY = "runitime:lht:ceiling:"
+TOLERANCE = 100
 
 from models.graphql import GQlEntity, InsertTypeMarkOne, UpdateTypeMarksByPKPartialTemp, TypeMarksReg, \
     TypeMarksByPkPartial, UpdatePanelTriangleByPKPartialTemp, PanelTriangleByPkPartial, InsertPanelTriangle, \
@@ -41,14 +41,16 @@ from models.connections import *
 # import Rhino.Geometry as rgg
 logger_buf = io.StringIO()
 
-triangles = CxmData(redis_conn.get(PRIMARY + "triangles")).decompress()
-trianglesv2 = json.loads(redis_conn.get(PRIMARY + "pnl_json").decode())
-mask = CxmData(redis_conn.get(PRIMARY + "mask")).decompress()
-pnl_ns = CxmData(redis_conn.get(PRIMARY + "pnl_namespace")).decompress()
+# triangles = CxmData(redis_conn.get(PRIMARY + "L2W:triangles")).decompress()
+
+# mask = CxmData(redis_conn.get(PRIMARY + "L2W:mask")).decompress()
+# pnl_ns = CxmData(redis_conn.get(PRIMARY + "L2W:pnl_namespace")).decompress()
 # tps = [[10, 20], [11, 21], [12, 22], [10, 20]]
 
 TOLERANCE = 100
-cutter = CutPanels(mask)
+
+
+# cutter = CutPanels(mask)
 
 
 class TypeTagDesc(mmcore.baseitems.descriptors.DataDescriptor):
@@ -168,61 +170,6 @@ def logtime(f):
     return wrp
 
 
-class PanelTriangle(Matchable):
-    __match_args__ = "centroid", "subtype", "tag", "cutted", "extra", "outside"
-    extra = PanelTriangleDesc()
-    cutted = PanelTriangleDesc()
-    subtype = PanelTriangleDesc()
-    tag = PanelTriangleDesc()
-    uuid = PanelTriangleDesc()
-    centroid = PanelTriangleDesc()
-    _tag = "A"
-    _x = None
-    _y = None
-
-    @logtime
-    @property
-    def mark(self):
-        return self.tag + "-" + self.subtype
-
-    @logtime
-    def __init__(self, centroid, no_post=False, **kwargs):
-        self.x = centroid["x"]
-        self.y = centroid["y"]
-
-        super().__init__(centroid, **kwargs)
-
-        # self.a, self.b, self.c, = points
-        if not no_post:
-            InsertPanelTriangle(x=centroid.x, y=centroid.y, **kwargs)
-
-    # def to_rhino(self):
-    #    self._rh_tri = rg.Triangle3d(self.a.to_rhino(), self.b.to_rhino(), self.c.to_rhino())
-    #    return self._rh_tri
-
-    @classmethod
-    def get_sequence(cls) -> ElementSequence:
-        return ElementSequence(
-            list(PanelTriangle(**dict((item, dct[item]) for item in cls.__match_args__), no_post=True) for dct in
-                 more_itertools.flatten(PanelTriangleReg())))
-
-    @property
-    def x(self):
-        return self._x
-
-    @x.setter
-    def x(self, v):
-        self._x = round(v / TOLERANCE, 0) * TOLERANCE
-
-    @property
-    def y(self):
-        return self._y
-
-    @y.setter
-    def y(self, v):
-        self._y = round(v / TOLERANCE, 0) * TOLERANCE
-
-
 class PaginateGhNamespace(Iterator):
     def __init__(self, data):
         self.headers = data.keys()
@@ -280,52 +227,49 @@ class Floor(str, Enum):
     B1 = "B1"
 
 
+class PanelTriangle(Matchable):
+    ...
+
+
 class Triangles(ElementSequence):
     floor: Floor
     query: query
     mutation: mutate
-    mutation = mutate(GqlString("lht_ceiling", "panels"), {
-        "mark",
-        "tag",
-        "x",
-        "y"}, {
-                          "objects": []
-                      })
 
-    def __init_subclass__(cls, floor: Floor = None, **kwargs):
-        cls.floor = floor
-        cls.query = query("lht_ceiling_panels(where: {floor: {_eq: $floor}}})".replace("$floor", floor), {
-            "mark"
+    def __init_subclass__(cls, floor: Floor = None, fields=(
+            "mark",
             "centroid",
             "tag",
             "subtype",
-            "floor"
-        }, variables=dict(floor=cls.floor))
-        cls.mutation = mutate(GqlString("lht_ceiling", "panels"), {
+            "floor"), **kwargs):
+        cls.floor = floor
+        cls.initial_fields = fields
+        cls.query = query("lht_ceiling_panels(where: {floor: {_eq: \"$floor\"}})".replace("$floor", floor), set(fields))
+        cls.mutation = mutate(GqlString("lht_ceiling", "panels"), fields={
             "mark",
             "tag",
             "x",
-            "y"}, {
-                              "objects": []
-                          })
+            "y"}, variables=dict(objects=[]))
 
         super().__init_subclass__(**kwargs)
-
-
 
     def __init__(self, seq):
         super().__init__(seq=seq)
         self.aaa()
 
-
     @classmethod
     def from_redis(cls):
+        trianglesv2 = json.loads(redis_conn.get(PRIMARY + f"{cls.floor}:pnl_json").decode())
         sl = cls(trianglesv2)
 
         return sl
 
     def commit(self):
         return self.mutation(variables={"objects": self._seq})
+
+    def fetch(self):
+        self._seq = self.query(full_root=True)["data"]["lht_ceiling_panels"]
+        self.aaa()
 
     def __array__(self):
         return np.stack([self["x"], self["y"]], axis=-1)
@@ -345,7 +289,7 @@ class Triangles(ElementSequence):
 
     @classmethod
     def from_db(cls):
-        return cls(cls.query(full_root=True)["data"]["lht_ceiling_type_marks"])
+        return cls(cls.query(full_root=True)["data"]["lht_ceiling_panels"])
 
     @property
     def kd(self):
@@ -361,7 +305,8 @@ class Triangles(ElementSequence):
 
     def solve_types(self):
 
-        que = query("lht_ceiling_type_marks(where: {floor: {_eq: $floor}})".replace("$floor",self.floor), {"x", "y", "tag"})
+        que = query("lht_ceiling_type_marks(where: {floor: {_eq: $floor}})".replace("$floor", self.floor),
+                    {"x", "y", "tag"})
         self.solve_kd()
         res = que(full_root=True)["data"]["lht_ceiling_type_marks"]
         list(map(self.tag_match, res))
@@ -404,3 +349,19 @@ def update_types_from_file(path: str, running_type: RunVars, debug=True):
             _th = threading.Thread(target=update_types, args=(data,))
             _th.name = "Types-Updater-Thread"
             _th.start()
+
+
+class TrianglesL2w(Triangles, floor=Floor.L2W):
+    ...
+
+
+class TrianglesL2(Triangles, floor=Floor.L2):
+    ...
+
+
+class TrianglesB1(Triangles, floor=Floor.B1):
+    ...
+
+
+class TrianglesL1(Triangles, floor=Floor.L1):
+    ...

@@ -1,13 +1,12 @@
 query {
-  lht_ceiling_panels{
-    x
-    y
-    centroid
-    subtype
-    tag
-    cutted
-    extra
+  lht_ceiling_panels(where: {floor: {_eq: "L2W"}, outside: {_eq: false}}) {
     outside
-
+    subtype
+    centroid
+    matrix
+    points
+    floor
+    mark
+    tag
   }
 }
