@@ -10,26 +10,31 @@ from typing import Iterator, ContextManager, Type
 import dotenv
 import numpy as np
 import scipy.spatial
+import shapely
 from scipy.spatial import KDTree
 from models.utils import decode_sv
 import multiprocessing
 import threading
 import asyncio
 
-dotenv.load_dotenv(dotenv.find_dotenv(usecwd=True))
 from scipy.spatial import distance
 import more_itertools
 from mmcore.collections.multi_description import ElementSequence
 import mmcore.baseitems.descriptors
 from cxmdata import CxmData
 from mmcore.baseitems import Matchable
+import dotenv
+
+dotenv.load_dotenv(dotenv.find_dotenv(usecwd=True))
 
 from mmcore.geom.base import Polygon
 
 from functools import lru_cache, cached_property
 
 from models.geom import PointRhp, CutPanels
+from mmcore.services.redis import connect
 
+redis_conn = connect.bootstrap_cloud()
 PRIMARY = "runitime:lht:ceiling:"
 TOLERANCE = 100
 
@@ -48,6 +53,10 @@ logger_buf = io.StringIO()
 # tps = [[10, 20], [11, 21], [12, 22], [10, 20]]
 
 TOLERANCE = 100
+
+from mmcore.services.redis import connect
+
+connect.bootstrap_cloud()
 
 
 # cutter = CutPanels(mask)
@@ -231,6 +240,14 @@ class PanelTriangle(Matchable):
     ...
 
 
+class CompareSequences:
+    def __init__(self):
+        super().__init__()
+
+    def __call__(self, a: ElementSequence, b: ElementSequence, **kwargs):
+        ...
+
+
 class Triangles(ElementSequence):
     floor: Floor
     query: query
@@ -241,13 +258,20 @@ class Triangles(ElementSequence):
             "centroid",
             "tag",
             "subtype",
-            "floor"), **kwargs):
+            "floor",
+            "uuid",
+            "updated_at", "points"), **kwargs):
         cls.floor = floor
         cls.initial_fields = fields
         cls.query = query("lht_ceiling_panels(where: {floor: {_eq: \"$floor\"}})".replace("$floor", floor), set(fields))
         cls.mutation = mutate(GqlString("lht_ceiling", "panels"), fields={
             "mark",
             "tag",
+            "floor",
+            "mask",
+            "uuid",
+            "updated_at",
+            "points",
             "x",
             "y"}, variables=dict(objects=[]))
 
@@ -365,3 +389,21 @@ class TrianglesB1(Triangles, floor=Floor.B1):
 
 class TrianglesL1(Triangles, floor=Floor.L1):
     ...
+
+
+from mmcore.services.redis import connect
+
+
+def get_mask_from_redis(floor="L2W"):
+    return CxmData(redis_conn.get(PRIMARY + floor + ":mask")).decompress()
+
+class SimpleTriangle(Polygon):
+    def to_shapely(self):
+        return shapely.Polygon(self.points)
+    def isintersect(self, other):
+        return shapely.contains_properly(other)
+
+
+
+
+crv=shapely.LineString()
