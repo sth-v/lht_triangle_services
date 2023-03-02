@@ -1,0 +1,35 @@
+pyclass:
+  name: GraphQlProtocol
+  module: app
+  spec:
+    qql_type_notation:
+      int:
+        name: Int
+        default: 0
+      str:
+        name: String
+        default: \"\"
+      float:
+        name: numeric
+        default: \"\"
+      bool:
+        name: Boolean
+        default: false
+      uuid:
+        name: uuid
+        default: \"\"
+      UUID:
+        name: uuid
+        default: \"\"
+      UUID4:
+        name: uuid
+        default: \"\"
+      dict:
+        name: jsonb
+        default: {}
+      list:
+        name: jsonb
+        default: {}
+      object:
+        name: jsonb
+        default: {}

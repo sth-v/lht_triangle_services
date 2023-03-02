@@ -1,5 +1,9 @@
 import json
+from enum import IntEnum
 from functools import cached_property, lru_cache
+from typing import Any
+
+import numpy as np
 
 from mmcore.baseitems import Matchable
 from mmcore.geom.base import Point
@@ -101,6 +105,7 @@ def mask2(aa, bb, eps=300):
         yield check2(aaa, bb, eps=eps)
 
 
+
 import shapely
 from shapely import Polygon, prepare
 
@@ -113,7 +118,13 @@ def ordered_compare(a, b):
             dct["not_eq"].append(k)
     return dct
 
+def to_ls(points):
+    for pts in points:
+        ptts = []
+        for pt in pts:
+            ptts.append((pt.X, pt.Y, pt.Z))
 
+        yield shapely.LineString(ptts)
 def strictly_contains_mask(mask):
     prepare(mask)
 
@@ -121,3 +132,87 @@ def strictly_contains_mask(mask):
         return shapely.contains_properly(mask, items).tolist()
 
     return masked
+
+def to_poly(self):
+        for pts in self.curve.points:
+            ptts = []
+            for pt in pts:
+                ptts.append((pt.X, pt.Y, pt.Z))
+
+            yield shapely.Polygon(ptts)
+
+import pydantic
+from collections import ChainMap
+class Link(object):
+    __slots__ = 'prev', 'next', 'key', 'data'
+
+
+
+class IntersectConditionStatus(IntEnum):
+    outside = 0
+    standard = 1
+    cutted = 2
+    excluded = 3
+
+from collections import ChainMap, namedtuple
+
+ChainMap()
+class IntersectConditionServiceSolution( pydantic.BaseModel):
+    index: int
+    uuid: pydantic.UUID4
+    reason: tuple[bool, bool]
+    status: IntersectConditionStatus
+
+
+
+
+
+class IntersectConditionService(Matchable):
+    #IntersectConditionService   __match_args__ = "curve", "offset"
+    curve: Any
+    offset: float
+
+
+    @property
+    def front_side_curve(self):
+
+        return self.curve.to_shapely()
+    @property
+    def back_side_curve(self):
+        return self.front_side_curve.to_shapely().buffer(self.offset)
+
+    def condition(self, pts):
+
+        ptts = []
+        for pt in pts:
+            ptts.append((pt.X, pt.Y, pt.Z))
+
+        return shapely.intersects(self.front_side_curve, shapely.LineString(ptts)),\
+            shapely.intersects(self.back_side_curve,shapely.LineString(ptts))
+
+    def check(self, triangles):
+        for i, tr in enumerate(triangles):
+            res = self.condition(tr)
+
+            if res == (False, False):
+                yield {"index": i, "status": "excluded", "reason": res, "comment": "Панель вне зоны примыкания",
+                       "id": 0}
+            elif res == (False, True):
+                yield {"index": i, "status": "standard", "reason": res,
+                       "comment": "Расстояние до стены позволяет оставить панель цельной", "id": 1}
+            elif res == (True, True):
+                yield {"index": i, "status": "cutted", "reason": res, "comment": "Подрезная паналь", "id": 2}
+            else:
+                yield {"index": i, "status": "excluded", "reason": res,
+                       "comment": "Панель не доходит до внешней границы стены и может быть полностью исключена",
+                       "id": 3}
+
+
+def divide_by_count(crv, count):
+    c = crv.ToNurbsCurve()
+    for t in np.linspace(c.Domain.T0, c.Domain.T1, count):
+        yield Point(c.PointAt(t).X, c.PointAt(t).Y, c.PointAt(t).X)
+
+
+from fastapi import FastAPI
+app=FastAPI()

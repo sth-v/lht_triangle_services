@@ -1,37 +1,31 @@
 import io
 import json
-import os
 import sys
 import time
+from abc import ABCMeta, abstractmethod
 from enum import Enum
-from types import TracebackType
-from typing import Iterator, ContextManager, Type
 
-import dotenv
 import numpy as np
-import scipy.spatial
+import requests
 import shapely
+from jinja2.nativetypes import NativeEnvironment
 from scipy.spatial import KDTree
 from models.utils import decode_sv
-import multiprocessing
 import threading
 import asyncio
 
 from scipy.spatial import distance
 import more_itertools
 from mmcore.collections.multi_description import ElementSequence
-import mmcore.baseitems.descriptors
 from cxmdata import CxmData
-from mmcore.baseitems import Matchable
+from mmcore.baseitems import Matchable, DataDescriptor
 import dotenv
 
 dotenv.load_dotenv(dotenv.find_dotenv(usecwd=True))
 
 from mmcore.geom.base import Polygon
 
-from functools import lru_cache, cached_property
-
-from models.geom import PointRhp, CutPanels
+from models.geom import PointRhp
 from mmcore.services.redis import connect
 
 redis_conn = connect.bootstrap_cloud()
@@ -39,8 +33,7 @@ PRIMARY = "runitime:lht:ceiling:"
 TOLERANCE = 100
 
 from models.graphql import GQlEntity, InsertTypeMarkOne, UpdateTypeMarksByPKPartialTemp, TypeMarksReg, \
-    TypeMarksByPkPartial, UpdatePanelTriangleByPKPartialTemp, PanelTriangleByPkPartial, InsertPanelTriangle, \
-    PanelTriangleReg
+    TypeMarksByPkPartial, UpdatePanelTriangleByPKPartialTemp, PanelTriangleByPkPartial
 from models.connections import *
 
 # import Rhino.Geometry as rgg
@@ -62,48 +55,226 @@ connect.bootstrap_cloud()
 # cutter = CutPanels(mask)
 
 
-class TypeTagDesc(mmcore.baseitems.descriptors.DataDescriptor):
+class GraphQlDescriptor(DataDescriptor, metaclass=ABCMeta):
+    """
+    Override mutation and query methods to use it
+    """
+    __descriptor_registry_name__ = "graphql_attribute"
 
-    def mutate(self):
+    @abstractmethod
+    def mutation(self):
+        pass
+
+    @abstractmethod
+    def query(self):
+        pass
+
+    def __set_name__(self, owner, name):
+        self.name = name
+        if not hasattr(owner, f"__{self.__descriptor_registry_name__}_dict__"):
+            setattr(owner, f"__{self.__descriptor_registry_name__}_dict__", {})
+        owner.__graphql_attribute_dict__[name] = self
+
+    def __get__(self, inst, own):
+        r = self.query()(x=inst.x, y=inst.y)
+        # print("r:  ", r)
+        return r[0][self.name]
+
+    def __set__(self, inst, v):
+        self.mutation()(**{
+            'x': inst.x,
+            'y': inst.y,
+            self.name: v
+        }
+                        )
+
+
+import yaml
+
+
+class GraphQlAbstractProtocol:
+    __slots__ = "_typename", "name", "default", "path", "key"
+    path: str
+    key: str
+    name: str
+    default: str
+
+    def __init_subclass__(cls, key="qql_type_notation.yml", path="gqlproto-pyclass.yml", **kwargs):
+        cls.key = key
+        cls.path = path
+        super().__init_subclass__()
+
+    def __init__(self, typename):
+        super().__init__()
+
+        self._typename = typename
+        spc = self.spec()
+        self.default = spc[typename][self.key]["default"]
+        self.name = spc[typename][self.key]["name"]
+
+    def spec(self) -> dict:
+        return yaml.unsafe_load(self.path)["pyclass"]["spec"]
+
+    def from_spec(self) -> str:
+        return f"${self._typename}: {self.name} = {self.default}"
+
+    def __repr__(self):
+        return "GraphQl Protocol: " + self.from_spec()
+
+    def __str__(self):
+        return self.from_spec()
+
+
+class GraphQlProtocol(GraphQlAbstractProtocol, key="qql_type_notation.yml", path="gqlproto-pyclass.yml"):
+
+    def from_spec(self) -> str:
+        return f"${self._typename}: {self.name} = {self.default}"
+
+
+class GraphQlInlineSpec(GraphQlAbstractProtocol, key="qql_type_notation.yml", path="gqlproto-pyclass.yml"):
+
+    def from_spec(self) -> str:
+        return f"{self._typename}: ${self.name}"
+
+
+class GQlProperty:
+    def mutation(self, func):
+
+
+        self._mutation=func
+        return self
+    def query(self, func):
+
+        self._query = func
+
+        # self.__dict__[self.name+"_query"]=wrapper
+
+        return self
+
+    gql_type: str
+
+    def __init__(self, client, **kwargs):
+        # self.mutate_j2env ,self.query_j2env=NativeEnvironment(), NativeEnvironment()
+        super().__init__()
+
+        self.mutate_j2env, self.query_j2env = NativeEnvironment(), NativeEnvironment()
+
+        self.client = client
+        self.kwargs = kwargs
+
+    def __call__(self, func):
+        self.func = func
+        self.name = func.__name__
+        self.fields = func.__code__.co_varnames
+        return self
+
+    def request(self, body, variables):
+        if variables is None:
+            variables={}
+        request = requests.post(self.client.url,
+
+                                headers=self.client.headers,
+                                json={
+                                    "query": body,
+                                    "variables": variables
+
+                                }
+                                )
+        # print(self.body, vars, request.json())
+
+        ...
+
+    def __get__(self, instance, own):
+
+
+        return list(self.request(self._query(instance ),self.kwargs))[-1]
+
+    def __set__(self, instance, variables):
+        self._mutation(instance)(variables)
+
+
+    def setup_vars(self, instance):
+        self.kws = {}
+        self.kws |= self.kwargs
+        for k in self.kwargs.keys():
+            if hasattr(instance, k):
+
+                self.kws[k] = getattr(instance, k)
+            else:
+                continue
+        self.kws["pkey"] = instance.pk
+        return self.kws
+
+    def generate_vars(self, variables):
+        return {"inline_vars": f'({",".join(GraphQlProtocol(pkk).from_spec() for pkk in variables.keys())})',
+                "outline_vars": f'{" ,".join(GraphQlInlineSpec(pkk).from_spec() for pkk in variables.keys())}'}
+
+
+from mmcore.gql import client as gql_client
+
+qclcl = gql_client.GQLClient(url=gql_client.GQL_PLATFORM_URL, headers={
+        "content-type": "application/json",
+        "user-agent": "JS GraphQL",
+        "X-Hasura-Role": "admin",
+        "X-Hasura-Admin-Secret": "mysecretkey"
+    })
+class A(Matchable):
+    """
+    lht_ceiling + _ + panels + _by_pk|... + ( $pk : String = "") + {
+
+    {{ root }}_{{ table }}{{ postfix }}{{ inline_vars }} {
+        recievs
+    }
+    """
+    __match_args__ = "x", "y", "floor"
+
+    @GQlProperty(client=qclcl)
+    def uuid(self, uuid): return uuid
+
+    @uuid.query
+    def uuid(self, body="""
+    query {
+        lht_ceiling_type_marks_by_pk(x: $x, y: $y) {
+            uuid
+         }
+        }"""):
+        return body.replace("$x", str(self.x)).replace("$y", str(self.y))
+
+    @GQlProperty(client=qclcl)
+    def centroid(self, centroid):
+        return PointRhp(centroid['x'], centroid['y'], centroid['z'])
+
+    @centroid.query
+    def centroid(self, body="""
+            query {
+                lht_ceiling_type_marks(where: {_and: {uuid: {_eq: $uuid}}}) {
+                    modify
+                    tag
+                    x
+                    y
+                    z
+                    floor
+                    uuid
+                      }
+                    }
+                    """):
+        return body.replace("$uuid", self.uuid)
+
+
+class TypeTagDesc(GraphQlDescriptor):
+
+    def mutation(self):
         return GQlEntity(UpdateTypeMarksByPKPartialTemp(self.name))
 
     def query(self):
         return TypeMarksByPkPartial(self.name)
 
-    def __get__(self, inst, own):
-        r = self.query()(x=inst.x, y=inst.y)
-        # print("r:  ", r)
-        return r[0][self.name]
 
-    def __set__(self, inst, v):
-        self.mutate()(**{
-            'x': inst.x,
-            'y': inst.y,
-            self.name: v
-        }
-                      )
+class PanelTriangleDesc(GraphQlDescriptor):
 
+    def mutation(self): return GQlEntity(UpdatePanelTriangleByPKPartialTemp(self.name))
 
-class PanelTriangleDesc(mmcore.baseitems.descriptors.DataDescriptor):
-
-    def mutate(self):
-        return GQlEntity(UpdatePanelTriangleByPKPartialTemp(self.name))
-
-    def query(self):
-        return PanelTriangleByPkPartial(self.name)
-
-    def __get__(self, inst, own):
-        r = self.query()(x=inst.x, y=inst.y)
-        # print("r:  ", r)
-        return r[0][self.name]
-
-    def __set__(self, inst, v):
-        self.mutate()(**{
-            'x': inst.x,
-            'y': inst.y,
-            self.name: v
-        }
-                      )
+    def query(self): return PanelTriangleByPkPartial(self.name)
 
 
 class TypeTag(Matchable):
@@ -179,53 +350,6 @@ def logtime(f):
     return wrp
 
 
-class PaginateGhNamespace(Iterator):
-    def __init__(self, data):
-        self.headers = data.keys()
-        self.data = zip(*data.values())
-
-    def _next_page(self):
-        return dict(zip(self.headers, next(self.data)))
-
-    @classmethod
-    def from_redis(cls, key):
-        return cls(data=CxmData(redis_conn.get(key)).decompress())
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return self._next_page()
-
-
-class RedisCxmDataBridge:
-    iterator = PaginateGhNamespace
-    name = None
-
-    def __init__(self, key=None, primary=PRIMARY, conn=redis_conn, **kwargs):
-        super().__init__()
-        self.key = key
-        self.primary = primary
-        self.conn = conn
-        self.__dict__ |= kwargs
-
-    def __set_name__(self, owner, name):
-        self.name = name
-
-    def get_data(self):
-        if self.name is None:
-            key = self.primary + self.key
-        else:
-            key = self.primary + self.name
-        return CxmData(redis_conn.get(key)).decompress()
-
-    def get(self):
-        return self.iterator(self.get_data())
-
-    def __get__(self, instance, owner):
-        return self.get()
-
-
 from mmcore.gql.client import query, mutate, GqlString
 
 
@@ -237,7 +361,48 @@ class Floor(str, Enum):
 
 
 class PanelTriangle(Matchable):
-    ...
+    __match_args__ =  "x", "y", "floor"
+
+    floor: Floor = Floor.L2W
+    fields=  (
+            "mark",
+            "centroid",
+            "tag",
+            "subtype",
+            "floor",
+            "uuid",
+            "updated_at", "points")
+    initial_fields = fields
+    subtype = PanelTriangleDesc()
+    extra = PanelTriangleDesc()
+    dtype= PanelTriangleDesc()
+    tag = PanelTriangleDesc()
+    uuid = PanelTriangleDesc()
+    centroid = PanelTriangleDesc()
+
+    @property
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, v):
+        self._x = round(v / TOLERANCE, 0) * TOLERANCE
+
+    @classmethod
+    def get_sequence(cls) -> ElementSequence:
+        return ElementSequence(
+            list(PanelTriangle(dct["x"], dct["y"], dct["floor"], no_post=True) for dct in more_itertools.flatten(TypeMarksReg())))
+
+    @property
+    def y(self):
+        return self._y
+
+    @y.setter
+    def y(self, v):
+        self._y = round(v / TOLERANCE, 0) * TOLERANCE
+
+    def distance(self, other):
+        return distance.euclidean([self.x, self.y], [other.x, other.y])
 
 
 class CompareSequences:
@@ -252,6 +417,7 @@ class Triangles(ElementSequence):
     floor: Floor
     query: query
     mutation: mutate
+    _x = _y = 0
 
     def __init_subclass__(cls, floor: Floor = None, fields=(
             "mark",
@@ -391,19 +557,16 @@ class TrianglesL1(Triangles, floor=Floor.L1):
     ...
 
 
-from mmcore.services.redis import connect
-
-
 def get_mask_from_redis(floor="L2W"):
     return CxmData(redis_conn.get(PRIMARY + floor + ":mask")).decompress()
+
 
 class SimpleTriangle(Polygon):
     def to_shapely(self):
         return shapely.Polygon(self.points)
+
     def isintersect(self, other):
         return shapely.contains_properly(other)
 
 
-
-
-crv=shapely.LineString()
+crv = shapely.LineString()

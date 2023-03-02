@@ -1,11 +1,10 @@
 import copy
+import functools
 
 import requests
 
 from mmcore.gql import client as gql_client
 from mmcore.gql.client import query
-
-
 
 
 class GQlEntity:
@@ -36,8 +35,10 @@ class GQlEntity:
 
                                 }
                                 )
-        #print(self.body, vars, request.json())
+        print(self.body, vars, request.json())
         return list(request.json()["data"].values())
+
+
 
 
 InsertTypeMarks = GQlEntity("""
@@ -88,7 +89,7 @@ mutation MyMutation7($x: numeric = "", $y: numeric = "", $tag: String = "", $uui
 }
 
 """)
-TypeMarksNotation= {"tag": 'String = ""', "uuid": 'uuid = ""', "z": 'numeric = ""'}
+TypeMarksNotation = {"tag": 'String = ""', "uuid": 'uuid = ""', "z": 'numeric = ""'}
 PanelTriangleNotation = {
     "tag": 'String = ""',
     "uuid": 'uuid = ""',
@@ -108,6 +109,8 @@ PanelTriangleNotation = {
     "floor": "String =\"\"",
     "extra": "Boolean = false"
 }
+
+
 def UpdateTypeMarksByPKPartialTemp(attr):
     query = """
 mutation MyMutation"attr($x: numeric = "", $y: numeric = "", $$attr: $header) {
@@ -201,8 +204,8 @@ mutation PanelTriangleInsert($y: numeric = 0, $x: numeric = 0, $centroid: jsonb 
 
 def PanelTriangleByPkPartial(attr): return GQlEntity("""
 
-query TypeMarksByPk($x: numeric = "", $y: numeric = "") {
-  lht_ceiling_panels_by_pk(x: $x, y: $y) {
+query PanelTriangleByPk($x: numeric = "", $y: numeric = "", $floor: String="") {
+  lht_ceiling_panels_by_pk(x: $x, y: $y, floor: $floor) {
     $attr
   }
 }""".replace("$attr", attr))
@@ -210,9 +213,11 @@ query TypeMarksByPk($x: numeric = "", $y: numeric = "") {
 
 def UpdatePanelTriangleByPKPartialTemp(attr):
     query = """
-mutation MyMutation$attr($x: numeric = "", $y: numeric = "", $$attr: $header) {
-  update_lht_ceiling_panels_by_pk(pk_columns: {x: $x, y: $y}, _set: {$attr:$$attr}) {
+mutation MyMutation$attr($x: numeric = "", $y: numeric = "", $floor: String = "", $$attr: $header) {
+  update_lht_ceiling_panels_by_pk(pk_columns: {x: $x, y: $y, floor: $floor}, _set: {$attr:$$attr}) {
     $attr
   }
 }"""
     return query.replace("$attr", attr).replace("$header", PanelTriangleNotation[attr])
+
+

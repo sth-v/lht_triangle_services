@@ -1,0 +1,54 @@
+{
+  "_class": "Triangle",
+  "name": "Cell Base Triangle",
+  "tag": {
+    "device": "A",
+    "subtype": "10",
+    "junction": {
+      "subtype": {
+        "name": "outside",
+        "value": 0,
+        "check": [
+          false,
+          false,
+          false
+        ]
+      },
+      "offset": 40.0,
+      "constrains": {
+        "lock_side_len": 200,
+        "cut_side_len": 50
+      }
+    },
+    "id": 1
+  },
+  "centroid": {
+    "x": 0,
+    "y": 2,
+    "z": 0,
+    "type": "Point"
+  },
+  "vertices": [
+    {
+      "x": 0,
+      "y": 2,
+      "z": 0,
+      "type": "Point"
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "z": 0,
+      "type": "Point"
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "z": 0,
+      "type": "Point"
+    }
+  ],
+  "matrix": [
+
+  ]
+}
