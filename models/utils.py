@@ -2,7 +2,8 @@ from typing import Iterator, Any
 
 from cxmdata import CxmData
 from mmcore.collections.multi_description import ElementSequence
-
+from mmcore.services.redis.connect import bootstrap_stack
+redis_conn = bootstrap_stack()
 
 def paginate(data_):
     data = zip(*data_.values())
@@ -98,8 +99,7 @@ class Compare(Counter):
     def __init__(self, tag, subtype):
         super().__init__()
 
-    def __repr__(self):
-        self.keys()
+
 
 
 def get_ordered_diff(a, b):

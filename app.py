@@ -2,6 +2,10 @@ import io
 import json
 import sys
 import time
+import dotenv
+import redis_om
+
+dotenv.load_dotenv(dotenv.find_dotenv(usecwd=True))
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 
@@ -15,20 +19,18 @@ import threading
 import asyncio
 
 from scipy.spatial import distance
-import more_itertools
-from mmcore.collections.multi_description import ElementSequence
-from cxmdata import CxmData
-from mmcore.baseitems import Matchable, DataDescriptor
-import dotenv
 
-dotenv.load_dotenv(dotenv.find_dotenv(usecwd=True))
+from mmcore.collections.multi_description import ElementSequence
+
+from mmcore.baseitems import Matchable, DataDescriptor
+
 
 from mmcore.geom.base import Polygon
 
 from models.geom import PointRhp
 from mmcore.services.redis import connect
 
-redis_conn = connect.bootstrap_cloud()
+redis_conn = connect.bootstrap_stack()
 PRIMARY = "runitime:lht:ceiling:"
 TOLERANCE = 100
 
@@ -140,9 +142,9 @@ class GraphQlInlineSpec(GraphQlAbstractProtocol, key="qql_type_notation.yml", pa
 class GQlProperty:
     def mutation(self, func):
 
-
-        self._mutation=func
+        self._mutation = func
         return self
+
     def query(self, func):
 
         self._query = func
@@ -170,7 +172,7 @@ class GQlProperty:
 
     def request(self, body, variables):
         if variables is None:
-            variables={}
+            variables = {}
         request = requests.post(self.client.url,
 
                                 headers=self.client.headers,
@@ -186,12 +188,10 @@ class GQlProperty:
 
     def __get__(self, instance, own):
 
-
-        return list(self.request(self._query(instance ),self.kwargs))[-1]
+        return list(self.request(self._query(instance), self.kwargs))[-1]
 
     def __set__(self, instance, variables):
         self._mutation(instance)(variables)
-
 
     def setup_vars(self, instance):
         self.kws = {}
@@ -213,11 +213,13 @@ class GQlProperty:
 from mmcore.gql import client as gql_client
 
 qclcl = gql_client.GQLClient(url=gql_client.GQL_PLATFORM_URL, headers={
-        "content-type": "application/json",
-        "user-agent": "JS GraphQL",
-        "X-Hasura-Role": "admin",
-        "X-Hasura-Admin-Secret": "mysecretkey"
-    })
+    "content-type": "application/json",
+    "user-agent": "JS GraphQL",
+    "X-Hasura-Role": "admin",
+    "X-Hasura-Admin-Secret": "mysecretkey"
+})
+
+
 class A(Matchable):
     """
     lht_ceiling + _ + panels + _by_pk|... + ( $pk : String = "") + {
@@ -361,21 +363,21 @@ class Floor(str, Enum):
 
 
 class PanelTriangle(Matchable):
-    __match_args__ =  "x", "y", "floor"
+    __match_args__ = "x", "y", "floor"
 
     floor: Floor = Floor.L2W
-    fields=  (
-            "mark",
-            "centroid",
-            "tag",
-            "subtype",
-            "floor",
-            "uuid",
-            "updated_at", "points")
+    fields = (
+        "mark",
+        "centroid",
+        "tag",
+        "subtype",
+        "floor",
+        "uuid",
+        "updated_at", "points")
     initial_fields = fields
     subtype = PanelTriangleDesc()
     extra = PanelTriangleDesc()
-    dtype= PanelTriangleDesc()
+    dtype = PanelTriangleDesc()
     tag = PanelTriangleDesc()
     uuid = PanelTriangleDesc()
     centroid = PanelTriangleDesc()
@@ -391,7 +393,8 @@ class PanelTriangle(Matchable):
     @classmethod
     def get_sequence(cls) -> ElementSequence:
         return ElementSequence(
-            list(PanelTriangle(dct["x"], dct["y"], dct["floor"], no_post=True) for dct in more_itertools.flatten(TypeMarksReg())))
+            list(PanelTriangle(dct["x"], dct["y"], dct["floor"], no_post=True) for dct in
+                 more_itertools.flatten(TypeMarksReg())))
 
     @property
     def y(self):
@@ -526,6 +529,30 @@ class RunVars(str, Enum):
     run_simple: str = "simple"
 
 
+from collections.abc import Sequence
+import more_itertools
+
+tt = [0, 1, 2, 0]
+
+
+def unmap_nested_triangles(path, data):
+    if isinstance(data, Sequence):
+
+        return more_itertools.collapse([unmap_nested_triangles(f"{path}:{i}", item) for i, item in enumerate(data)],
+                                       dict)
+    else:
+        points=[]
+        for pt in list(data.ToPolyline())[:-1]:
+            points.append(PointRhp.from_rhino(pt).to_dict(lower=True))
+
+        return {"points": points, "path":path}
+
+
+from cxmdata import CxmData
+def l2wtriangles():
+    *gg, = unmap_nested_triangles(path="", data=CxmData(redis_conn.get('runtime:ceiling:triangles:L2W')).decompress())
+    return gg
+
 def update_types_from_file(path: str, running_type: RunVars, debug=True):
     with open(path, "r") as f:
         data = decode_sv(json.load(f))
@@ -569,4 +596,10 @@ class SimpleTriangle(Polygon):
         return shapely.contains_properly(other)
 
 
-crv = shapely.LineString()
+from models.utils import get_ordered_diff, abs_compare, ordered_compare, compare_multi_keys
+
+
+def test_pair():
+    _a = TrianglesL2w.from_db()
+    _b = TrianglesL2w.from_redis()
+    return _a, _b

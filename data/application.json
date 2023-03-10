@@ -1,5 +1,5 @@
 {
-  "_class": "Triangle",
+  "type": "Triangle",
   "name": "Cell Base Triangle",
   "tag": {
     "device": "A",
@@ -20,7 +20,8 @@
         "cut_side_len": 50
       }
     },
-    "id": 1
+    "id": 1,
+    "rel": "$..junction..subtype"
   },
   "centroid": {
     "x": 0,

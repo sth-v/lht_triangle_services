@@ -1,0 +1,21 @@
+pyclass:
+  - name: Point
+    prefix: mmcore.geoms.base
+    body:
+      x: float
+      y: float
+      z: float
+
+  - name: Triangle
+    prefix: app
+    body:
+      id: int
+      offset: int
+      constrains:
+        lock_side_len: 200
+        cut_side_len: 50
+      tag:
+        device: str
+      centroid: {{ Point }}
+
+
