@@ -1,0 +1,15 @@
+query {
+  lht_triangles_contours {
+    connector {
+      from
+      name
+      offset
+      production
+      type
+    }
+    curve
+    detail
+    floor
+    uuid
+  }
+}

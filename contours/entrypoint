@@ -1,0 +1,24 @@
+
+from __future__ import absolute_import, annotations
+
+import os
+import subprocess
+import sys
+
+def install(python):
+    print(python)
+
+
+
+    proc2=subprocess.Popen(f"{python} -m pip install --force-reinstall git+https://github.com/contextmachine/mmcore.git".split(" "))
+    proc2.wait()
+    proc3=subprocess.Popen(f"{python} -m pip install git+https://github.com/sth-v/cxm_boto_client.git".split(" "))
+    proc3.wait()
+    proc3=subprocess.Popen(f"{python} -m pip install git+https://github.com/contextmachine/cxmdata.git".split(" "))
+    proc3.wait()
+    proc=subprocess.Popen(f"{python} -m pip install -r /tmp/req.txt".split(" "))
+    proc.wait()
+
+if __name__ == "__main__":
+
+    install("/opt/conda/bin/python")

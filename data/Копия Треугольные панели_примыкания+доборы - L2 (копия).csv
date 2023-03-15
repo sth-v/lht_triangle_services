@@ -1,0 +1,35 @@
+5_L2,-200,,visible,,false
+6_L2,40,,hidden,гидрорез,true
+7_L2,0,,visible,,false
+8_L2,-10,,visible,,true
+11_L2,20,ОТ БЕТОНА,hidden,гидрорез,false
+13_L2,15,,hidden,гидрорез,true
+14_L2,35,,hidden,гидрорез,true
+15_L2,90,,visible,,true
+16_L2,-100,,visible,,true
+17_L2,-200,,visible,,false
+18_L2,0,,visible,,
+19_L2,25,,hidden,,false
+20_L2,20,ОТ БЕТОНА,hidden,,false
+21_L2,0,,visible,,false
+28_L2,10,ОТ БЕТОНА,hidden,,false
+29_L2,0,,visible,,false
+2_L1,-10,,visible,,false
+6_L1,40,,hidden ,гидрорез,true
+7_L1,0,,visible,,false
+11_L1,20,ОТ БЕТОНА,hidden,гидрорез,false
+23_L1,0,,visible,,false
+24_L1,-5,,visible,,false
+25_L1,20,ОТ БЕТОНА,hidden,,false
+27_L1,0,,visible,,false
+1_B1,20,ОТ БЕТОНА,hidden,гидрорез,false
+2_B1,-10,,visible,,false
+3_B1,20,ОТ БЕТОНА,hidden,гидрорез,false
+4_B1,-10,,visible,,true
+5_B1,-200,,visible,,false
+6_B1,40,,hidden,гидрорез,true
+7_B1,0,,visible,,false
+8_B1,-10,,visible,,true
+9_B1,-20,,visible,,false
+10_B1,-10,,visible,,false
+11_B1,20,ОТ БЕТОНА,hidden,гидрорез,false

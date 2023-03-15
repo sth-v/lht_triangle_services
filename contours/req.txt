@@ -1,0 +1,10 @@
+docker
+rhino3dm
+jinja2
+python-dotenv
+requests
+rpyc
+pyyaml
+pandas
+numpy
+scipy

@@ -1,0 +1,1 @@
+docker run docker run --bind=/var/run/docker.sock:/var/run/docker.sock:rw --volume=/tmp/data:/tmp/data --privileged --workdir=/tmp -p 3888:8888 docker.io/sthv/mmcore:latest

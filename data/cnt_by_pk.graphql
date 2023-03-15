@@ -1,0 +1,11 @@
+query GetConnectorsAndCo($uuid: uuid = "b6b0218c-faa6-40ab-b71b-c15f1fb77b87") {
+  lht_triangles_contours_by_pk(uuid: $uuid) {
+     connector {
+
+        name
+        offset
+        production
+        type
+    }
+  }
+}

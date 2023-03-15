@@ -1,0 +1,6 @@
+query GetConnectorsTemp($uuid: uuid = "") {
+  lht_triangles_contours_by_pk(uuid: $uuid) {
+    {% for attr in attrs %}
+    {{ attr }}{% endfor %}
+  }
+}

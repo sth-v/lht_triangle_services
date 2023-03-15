@@ -1,0 +1,7 @@
+mutation InsertContours($curve: jsonb, $detail: name = "", $floor: lht_triangles_floors_enum = B1) {
+  insert_lht_triangles_contours(objects: {curve: $curve, detail: $detail, floor: $floor}) {
+    returning {
+      uuid
+    }
+  }
+}

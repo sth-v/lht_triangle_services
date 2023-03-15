@@ -1,0 +1,14 @@
+mutation UpdateContours($uuid: uuid = "", $curve: jsonb = "", $detail: name = "", $floor: lht_triangles_floors_enum = B1, ) {
+  update_lht_triangles_contours_by_pk(pk_columns: {uuid: $uuid}, _set: {curve: $curve, detail: $detail, floor: $floor}) {
+    curve
+    detail
+    connector {
+      name
+      offset
+      production
+      type
+    }
+    uuid
+    floor
+  }
+}

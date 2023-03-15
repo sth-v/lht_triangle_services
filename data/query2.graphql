@@ -1,0 +1,5 @@
+query GetConnectorsUuids {
+  lht_triangles_contours {
+    uuid
+  }
+}

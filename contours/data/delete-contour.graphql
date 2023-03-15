@@ -1,0 +1,5 @@
+mutation DeleteContours($uuid: uuid = "") {
+  delete_lht_triangles_contours_by_pk(uuid: $uuid) {
+    uuid
+  }
+}
