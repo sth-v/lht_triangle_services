@@ -1,5 +1,6 @@
+export PYTHON=
 chmod +x entrypoint
 chmod +x activate
 
-./entrypoint $PYTHON
+python ./entrypoint $PYTHON
 

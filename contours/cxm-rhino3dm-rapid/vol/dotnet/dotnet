@@ -1,0 +1,2 @@
+#! /bin/bash
+docker run -P -v /var/run/docker.sock:/var/run/docker.sock --name dotnet-container -a stdin -a stdout -a stderr -t sthv/cxm-dotnet-ubuntu

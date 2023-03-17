@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+
 
 #        |     No ENTRYPOINT      |	 ENTRYPOINT exec_entry p1_entry	 | ENTRYPOINT [“exec_entry”, “p1_entry”]          |
 # -------+------------------------+----------------------------------+------------------------------------------------+
@@ -11,15 +11,27 @@
 
 FROM mambaorg/micromamba
 USER root
+
+
+
+
 # Для выполнения директивы ниже вам необходимо указать `syntax=docker/dockerfile:1` в начале файла
-COPY --link . .
+
 # 🐍 Setup micromamba.
 # ⚙️ Source: https://hub.docker.com/r/mambaorg/micromamba
-COPY --chown=$MAMBA_USER:$MAMBA_USER env.yaml /tmp/env.yaml
+COPY --chown=root:root env.yaml /tmp/env.yaml
 RUN micromamba install -y -n base -f /tmp/env.yaml && \
     micromamba clean --all --yes
+RUN apt update
+RUN apt install -y git python3 python3-dev python3-setuptools cmake gcc g++
 # 🐳 Setting pre-build params and environment variables.
 # ⚙️ Please set you environment globals :)
 # ENV PARAM=value
 
-RUN ["/usr/local/bin/_entrypoint.sh", "python", "-m", "pip", "install","git+https://github.com/contextmachine/mmcore.git"]
+
+RUN /usr/local/bin/_entrypoint.sh python -m pip install git+https://github.com/contextmachine/mmcore.git compute_rhino3d && \
+    /usr/local/bin/_entrypoint.sh python -m pip install git+https://github.com/contextmachine/cxmdata.git && \
+    /usr/local/bin/_entrypoint.sh python -m pip install git+https://github.com/sth-v/cxm_boto_client.git && \
+
+
+ENTRYPOINT ["/usr/local/bin/_entrypoint.sh"]

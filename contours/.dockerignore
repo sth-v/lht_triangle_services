@@ -1,4 +1,4 @@
-temp
+
 entry.sh
 entrypoint
 env-intern.yaml
@@ -6,3 +6,8 @@ reg.http
 req.txt
 runme.sh
 start-service.sh
+ubuntu-dotnet
+cxm-rhino3dm-rapid
+data
+gql
+mm

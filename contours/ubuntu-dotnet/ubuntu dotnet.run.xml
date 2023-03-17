@@ -1,0 +1,23 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ubuntu dotnet" type="docker-deploy" factoryName="dockerfile" server-name="Docker">
+    <deployment type="dockerfile">
+      <settings>
+        <option name="imageTag" value="sthv/cxm-dotnet-ubuntu:latest" />
+        <option name="buildCliOptions" value="--network none" />
+        <option name="command" value="--info" />
+        <option name="containerName" value="dotnet-ubuntu" />
+        <option name="showCommandPreview" value="true" />
+        <option name="sourceFilePath" value="$PROJECT_DIR$/ubuntu-dotnet/Dockerfile" />
+        <option name="volumeBindings">
+          <list>
+            <DockerVolumeBindingImpl>
+              <option name="containerPath" value="/tmp" />
+              <option name="hostPath" value="$PROJECT_DIR$/cxm-rhino3dm-rapid/vol" />
+            </DockerVolumeBindingImpl>
+          </list>
+        </option>
+      </settings>
+    </deployment>
+    <method v="2" />
+  </configuration>
+</component>

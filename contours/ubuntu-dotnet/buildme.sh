@@ -1,0 +1,1 @@
+docker build --network bridge --platform amd64 --platform arm64 -f Dockerfile -t sthv/cxm-dotnet-ubuntu:latest . && docker run -P -v /var/run/docker.sock:/var/run/docker.sock --name dotnet-container -a stdin -a stdout -a stderr -t sthv/cxm-dotnet-ubuntu

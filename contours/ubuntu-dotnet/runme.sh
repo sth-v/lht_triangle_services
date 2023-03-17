@@ -1,0 +1,1 @@
+docker build --network host -f Dockerfile -t sthv/cxm-dotnet-ubuntu:latest . && docker run -v /Users/andrewastakhov/PycharmProjects/triangle_ceiling_lht/contours/cxm-rhino3dm-rapid/vol:/tmp --name dotnet-ubuntu --rm sthv/cxm-dotnet-ubuntu:latest "$@"

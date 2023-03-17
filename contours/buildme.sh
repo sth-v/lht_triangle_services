@@ -1,0 +1,1 @@
+docker build --network host  --no-cache --platform amd64 -t sthv/mmcore:amd64 .

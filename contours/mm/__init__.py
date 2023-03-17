@@ -35,10 +35,10 @@ import strawberry
 
 from fastapi import FastAPI
 from strawberry.fastapi import GraphQLRouter
-from mmcore.services.redis import connect
+
 
 update_contour = GQLFileBasedQuery("data/update-contour.graphql")
-rconn = connect.bootstrap_cloud()
+
 
 floor_mapping = {
     "L2W": ("L2", "L2W"),
@@ -81,11 +81,13 @@ class FloorWriter:
         return self._json
 
     def from_redis(self):
-        self._json = json.loads(rconn.get(self.redis_key).decode())
-        return self._json
+        #self._json = json.loads(rconn.get(self.redis_key).decode())
+        #return self._json
+        ...
 
     def to_redis(self):
-        rconn.set(self.redis_key, json.dumps(self._json).encode())
+        #rconn.set(self.redis_key, json.dumps(self._json).encode())
+        ...
 
     def json(self):
 
