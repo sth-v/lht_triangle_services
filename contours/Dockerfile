@@ -29,7 +29,7 @@ RUN apt install -y git python3 python3-dev python3-setuptools cmake gcc g++
 # ENV PARAM=value
 
 
-RUN /usr/local/bin/_entrypoint.sh python -m pip install git+https://github.com/contextmachine/mmcore.git compute_rhino3d && \
+RUN /usr/local/bin/_entrypoint.sh python -m pip install git+https://github.com/contextmachine/mmcore.git && \
     /usr/local/bin/_entrypoint.sh python -m pip install git+https://github.com/contextmachine/cxmdata.git && \
     /usr/local/bin/_entrypoint.sh python -m pip install git+https://github.com/sth-v/cxm_boto_client.git && \
 
